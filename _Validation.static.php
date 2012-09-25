@@ -5,7 +5,7 @@
  * @package _Validation
  * @license MIT
  * @author  Sunny Walker <swalker@hawaii.edu>
- * @version 2012-09-07.00
+ * @version 2012-09-21.00
  */
 class Validation {
 	/**
@@ -392,14 +392,15 @@ class Validation {
 	 * - password  Tests if length>=5 and is not easy-to-guess
 	 *
 	 * Options:
-	 * - string type     Type of test (as above), default: 'text'
-	 * - int    min_int  Minimum value for integers
+	 * - int    min_int     Minimum value for integers, default: 1
+	 * - int    min_pw_len  Minimum password length for password types, default: 8
+	 * - string type        Type of test (as above), default: 'text'
 	 *
 	 * @param string|array $field_names     Name of field(s) as string, CSV, or array of field names
 	 * @param string       $error_message   Error message if test fails {@link setError()}
 	 * @param array        $options=array() Optional settings (see above)
 	 * @return bool
-	 * @version 2012-03-09.00
+	 * @version 2012-09-21.00
 	 */
 	public static function validate($field_names, $error_message, $options=array()) {
 		self::log("args(field_names=".self::pp($field_names).", error_message=".self::pp($error_message).", options=".self::pp($options).")",1);
@@ -415,12 +416,13 @@ class Validation {
 			//assume the name is one field
 			$options = self::extend($options, array(
 				'min_int'=>1, //default minimum integer value
+				'min_pw_len'=>8, //default minimum password length
 				'type'=>'text' //default field type to text
 			));
 			if ($options['type']=='int') $return = intval(self::$form[$field_names])>=$options['min_int'];
 			elseif ($options['type']=='email') $return = self::isValidEmail(self::$form[$field_names]);
 			elseif ($options['type']=='password') {
-				if (strlen(self::$form[$field_names])<5) $return = false;
+				if (strlen(self::$form[$field_names])<$options['min_pw_len']) $return = false;
 				if (in_array(strtoupper(self::$form[$field_names]),array('SECRET','PASSWORD','QWERTY','12345','123456','1234567','12345678','123456789','1234567890','ABCDE'))) $return = false;
 			} else {
 				//all other type just test not empty
