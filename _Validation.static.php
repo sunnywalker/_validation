@@ -5,7 +5,7 @@
  * @package _Validation
  * @license MIT
  * @author  Sunny Walker <swalker@hawaii.edu>
- * @version 2012-09-21.00
+ * @version 2013-05-23.00
  */
 class Validation {
 	/**
@@ -336,6 +336,62 @@ class Validation {
 	} //getRs()
 
 	/**
+	 * Bind a Validation field value to a PDO Statement.
+	 *
+	 * @param  PDOStatement $pdo_statement  Statement to use for binding
+	 * @param  string|array $field_names    Name(s) of the field
+	 * @param  integer      $type_overrride PDO::PARAM_* override (otherwise {@link guessFieldType()} is used)
+	 * @return boolean
+	 * @version 2013-05-23.00
+	 */
+	public static function pdoBindValue(PDOStatement &$pdo_statement, $field_names, $type_override=null) {
+		self::log("args(pdo_statement=..., field_names=".self::pp($field_names).", type_override=$type_override)", 1);
+		if (is_array($field_names)) {
+			//field_names is already an array
+			foreach($field_names as $name) {
+				self::pdoBindValue($pdo_statement, $name, $type_override);
+			}
+			self::$console_indent--;
+		} elseif (strpos($field_names, ',')!==false) {
+			//field_names is comma-delimited
+			$field_names = explode(',', $field_names);
+			foreach($field_names as $name) {
+				self::pdoBindValue($pdo_statement, trim($name), $type_override);
+			}
+			self::$console_indent--;
+		} elseif ($field_names!='') {
+			//assume field_names is one field
+			$type = self::guessFieldType($field_names);
+			if ($type_override!==null) {
+				$pdo_type = $type_override;
+			} elseif ($type==='int' || $type==='year') {
+				$pdo_type = PDO::PARAM_INT;
+			} else {
+				$pdo_type = PDO::PARAM_STR;
+			}
+			$value = isset(self::$form[$field_names]) ? self::$form[$field_names] : null;
+			if ($value==null) {
+				$return = $pdo_statement->bindValue(":$field_names", null, PDO::PARAM_NULL);
+				self::log('value was null');
+			} elseif ($type==='date') {
+				$return = $pdo_statement->bindValue(":$field_names", date('Y-m-d', strtotime($value)));
+				self::log('value converted to date');
+			} elseif ($type==='datetime') {
+				$return = $pdo_statement->bindValue(":$field_names", date('Y-m-d H:i:s', strtotime($value)));
+				self::log('value converted to datetime');
+			} elseif ($pdo_type===PDO::PARAM_INT) {
+				$pdo_statement->bindValue(":$field_names", (int)$value, PDO::PARAM_INT);
+				self::log('value converted to int');
+			} else {
+				$return = $pdo_statement->bindValue(":$field_names", $value);
+				self::log('value treated as string');
+			}
+			self::log(self::pp($return), -1);
+			return $return;
+		}
+	} // pdoBindValue()
+
+	/**
 	 * Manually set an error for the field(s).
 	 *
 	 * @param string|array $field_names    Field name(s)
@@ -392,15 +448,14 @@ class Validation {
 	 * - password  Tests if length>=5 and is not easy-to-guess
 	 *
 	 * Options:
-	 * - int    min_int     Minimum value for integers, default: 1
-	 * - int    min_pw_len  Minimum password length for password types, default: 8
-	 * - string type        Type of test (as above), default: 'text'
+	 * - string type     Type of test (as above), default: 'text'
+	 * - int    min_int  Minimum value for integers
 	 *
 	 * @param string|array $field_names     Name of field(s) as string, CSV, or array of field names
 	 * @param string       $error_message   Error message if test fails {@link setError()}
 	 * @param array        $options=array() Optional settings (see above)
 	 * @return bool
-	 * @version 2012-09-21.00
+	 * @version 2012-03-09.00
 	 */
 	public static function validate($field_names, $error_message, $options=array()) {
 		self::log("args(field_names=".self::pp($field_names).", error_message=".self::pp($error_message).", options=".self::pp($options).")",1);
@@ -416,13 +471,12 @@ class Validation {
 			//assume the name is one field
 			$options = self::extend($options, array(
 				'min_int'=>1, //default minimum integer value
-				'min_pw_len'=>8, //default minimum password length
 				'type'=>'text' //default field type to text
 			));
 			if ($options['type']=='int') $return = intval(self::$form[$field_names])>=$options['min_int'];
 			elseif ($options['type']=='email') $return = self::isValidEmail(self::$form[$field_names]);
 			elseif ($options['type']=='password') {
-				if (strlen(self::$form[$field_names])<$options['min_pw_len']) $return = false;
+				if (strlen(self::$form[$field_names])<5) $return = false;
 				if (in_array(strtoupper(self::$form[$field_names]),array('SECRET','PASSWORD','QWERTY','12345','123456','1234567','12345678','123456789','1234567890','ABCDE'))) $return = false;
 			} else {
 				//all other type just test not empty
@@ -790,7 +844,7 @@ class Validation {
 		if ($options['extra_attributes']!='') $return .= ' '.$options['extra_attributes'];
 		$return .= ' />';
 		if (!$options['no_label'] && ($label!='' || $options['image']!='')) {
-			$return .= '<label for="'.$id.'"'.($options['label_class']!=''?' class="'.$options['label_class'].'"':'');
+			$return .= ' <label for="'.$id.'"'.($options['label_class']!=''?' class="'.$options['label_class'].'"':'');
 			if ($options['label_style']!='') $return .= ' style="'.$options['label_style'].'"';
 			if ($options['label_extra_attributes']!='') $return .= ' '.$options['label_extra_attributes'];
 			$return .= '>';
