@@ -5,7 +5,7 @@
  * @package _Validation
  * @license MIT
  * @author  Sunny Walker <swalker@hawaii.edu>
- * @version 2013-05-23.00
+ * @version 2013-11-25.00
  */
 class Validation {
 	/**
@@ -342,7 +342,7 @@ class Validation {
 	 * @param  string|array $field_names    Name(s) of the field
 	 * @param  integer      $type_overrride PDO::PARAM_* override (otherwise {@link guessFieldType()} is used)
 	 * @return boolean
-	 * @version 2013-05-23.00
+	 * @version 2013-11-25.00
 	 */
 	public static function pdoBindValue(PDOStatement &$pdo_statement, $field_names, $type_override=null) {
 		self::log("args(pdo_statement=..., field_names=".self::pp($field_names).", type_override=$type_override)", 1);
@@ -380,7 +380,7 @@ class Validation {
 				$return = $pdo_statement->bindValue(":$field_names", date('Y-m-d H:i:s', strtotime($value)));
 				self::log('value converted to datetime');
 			} elseif ($pdo_type===PDO::PARAM_INT) {
-				$pdo_statement->bindValue(":$field_names", (int)$value, PDO::PARAM_INT);
+				$return = $pdo_statement->bindValue(":$field_names", (int)$value, PDO::PARAM_INT);
 				self::log('value converted to int');
 			} else {
 				$return = $pdo_statement->bindValue(":$field_names", $value);
